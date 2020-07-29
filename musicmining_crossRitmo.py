@@ -1,39 +1,75 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Oct 30 16:54:07 2019
+import matplotlib.pyplot as plt
 
-@author: arval
-"""
-import matplotlib.pyplot as plt# Is a libreri to put the info in a graph
-import librosa as bro#Music manipulation librery
+# and IPython.display for audio output
+import IPython.display
+
+# Librosa for audio
+import librosa as bro
 import numpy as np
-import librosa.display #Librery to management of data to pass by to ptl lib
-#filename: file that sabe a sample of music
-filename = bro.util.example_audio_file()
-filess = bro.util.find_files('~/Sampler', ext='mp3')# por que no me corre esta wea ??
+import librosa.display 
+import os
+import shutil
+import operator
 
 
-print(len(filess))
-# 2. Load the audio as a waveform `y`
 
-#    Store the sampling rate as `sr`
-y, sr = bro.load(filename)
-print(sr)
-# 3. Run the default beat tracker
-tempo, beat_frames = bro.beat.beat_track(y=y, sr=sr)
+def cargarSong(a) :
+        
+    y, sr = bro.load(a)
 
-plt.figure(figsize=(25, 25))
+    
+    #---------------------------------------------------------------------
+    C= bro.feature.chroma_cqt(y=y,sr=sr)
 
-CQT= bro.amplitude_to_db(np.abs(bro.cqt(y,sr=sr)), ref=np.max)
-plt.subplot(4, 2, 3)
-bro.display.specshow(CQT, y_axis='cqt_note')
-plt.colorbar(format='%+2.0f dB')
-plt.title('Constant-Q power spectrogram (note)')
+    hop_length = 512
+    plt.figure(figsize=(8, 4))
+    onset_env = bro.onset.onset_strength(y, sr=sr,aggregate=np.median)
+    tempo, beats = librosa.beat.beat_track(onset_envelope=onset_env,sr=sr)
+    times = bro.frames_to_time(np.arange(len(onset_env)),sr=sr, hop_length=hop_length)
+    plt.plot(times, bro.util.normalize(onset_env),label='Onset strength')
+    plt.vlines(times[beats], 0, 1, alpha=0.5, color='r',linestyle='--', label='Beats')
+    plt.legend(frameon=True, framealpha=0.75)
 
-#---------------------------------------------------------------------
-C= bro.feature.chroma_cqt(y=y,sr=sr)
-plt.subplot(4,2,5)
-bro.display.specshow(CQT, y_axis='chroma')
+    
+    plt.xlim(15, 30)
+    plt.gca().xaxis.set_major_formatter(librosa.display.TimeFormatter())
+    plt.tight_layout()
+    plt.show()
+    tempo,beats = bro.beat.beat_track(y=y, sr=sr)
+    print("tempo",tempo)
+    return tempo
 
-plt.colorbar()
-plt.title("chromagram")
+def calcularError(a:int ,b:int):
+    print("error:")
+    print((a-b)/a)
+    return abs((a-b)/a)
+    
+
+    
+origin = os.getcwd()+'/';
+dirsa=[]
+i=0
+ind=0
+ordenar={}
+song="09 LUST.ogg"
+dirs = os.listdir(origin);
+for audio in dirs:
+    if(audio.endswith(".ogg")):
+        dirsa.append(audio)
+print(dirsa)
+
+i=cargarSong(song)
+
+for audio in dirsa:
+    ordenar[audio] = calcularError(cargarSong(audio),i)
+    
+ordenar = sorted(ordenar.items(), key=operator.itemgetter(1), reverse=False)
+print(ordenar,"\n")
+
+for song in ordenar:
+    ind=ind+1
+    print(song)
+    newNombre=str(ind)+"__"+ song[0]
+    print("nombre nuevo  ", newNombre)
+    os.rename(song[0],newNombre)
+    
